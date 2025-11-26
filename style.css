@@ -1,0 +1,130 @@
+:root {
+    --bg-color: #121212;
+    --card-bg: #1e1e1e;
+    --text-color: #e0e0e0;
+    --primary-color: #bb86fc;
+    --secondary-color: #03dac6;
+    --input-bg: #2c2c2c;
+    --border-color: #333;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.container {
+    width: 100%;
+    max-width: 800px;
+    padding: 2rem;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+h1 {
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+p {
+    color: #a0a0a0;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.input-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.checkbox-group {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+label {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+input[type="number"], input[type="text"] {
+    background-color: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 0.8rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+input[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+input[type="checkbox"] {
+    width: 1.2rem;
+    height: 1.2rem;
+    accent-color: var(--primary-color);
+}
+
+button {
+    width: 100%;
+    padding: 1rem;
+    background-color: var(--primary-color);
+    color: #000;
+    border: none;
+    border-radius: 4px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.2s, opacity 0.2s;
+}
+
+button:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+.results-container {
+    margin-top: 2rem;
+    background-color: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+.hidden {
+    display: none;
+}
+
+pre {
+    white-space: pre-wrap;
+    font-family: 'Courier New', Courier, monospace;
+    line-height: 1.5;
+    color: #d0d0d0;
+}

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Z Chromosome Simulation (JS)</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="simulation.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Z Chromosome Simulation</h1>
+            <p>Explore the survival of the Z chromosome across generations. (Running locally in your browser via
+                JavaScript)</p>
+        </header>
+
+        <main>
+            <form id="simForm">
+                <div class="grid">
+                    <div class="input-group">
+                        <label for="adam">Adam (XY)</label>
+                        <input type="number" id="adam" value="1000" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="eve">Eve (XX)</label>
+                        <input type="number" id="eve" value="1000" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="lilith">Lilith (ZY)</label>
+                        <input type="number" id="lilith" value="1" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="diana">Diana (ZX)</label>
+                        <input type="number" id="diana" value="0" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="eveBirth">Eve Birth Rate</label>
+                        <input type="number" step="0.1" id="eveBirth" value="1.5" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="lilithBirth">Lilith Birth Rate</label>
+                        <input type="number" step="0.1" id="lilithBirth" value="1.5" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="dianaBirth">Diana Birth Rate</label>
+                        <input type="number" step="0.1" id="dianaBirth" value="1.5" required>
+                    </div>
+
+                    <div class="input-group checkbox-group">
+                        <label for="viableY">Y chromosome eggs viable?</label>
+                        <input type="checkbox" id="viableY">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="maxPop">Max Population</label>
+                        <input type="number" id="maxPop" value="50000" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="generations">Generations</label>
+                        <input type="number" id="generations" value="37" required>
+                    </div>
+                    <div class="input-group full-width">
+                        <label for="timelines">Timelines</label>
+                        <input type="number" id="timelines" value="100" required>
+                    </div>
+                </div>
+
+                <button type="submit" id="runBtn">Run Simulation</button>
+            </form>
+
+            <div id="results" class="results-container hidden">
+                <h2>Results</h2>
+                <pre id="resultText"></pre>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>
