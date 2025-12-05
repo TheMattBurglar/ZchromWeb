@@ -128,3 +128,19 @@ pre {
     line-height: 1.5;
     color: #d0d0d0;
 }
+
+.charts-container {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.chart-wrapper {
+    background-color: #2c2c2c;
+    padding: 1rem;
+    border-radius: 8px;
+    position: relative;
+    height: 300px;
+    width: 100%;
+}

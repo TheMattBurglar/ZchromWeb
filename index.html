@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="simulation.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -76,6 +77,18 @@
             <div id="results" class="results-container hidden">
                 <h2>Results</h2>
                 <pre id="resultText"></pre>
+                
+                <div class="charts-container">
+                    <div class="chart-wrapper">
+                        <canvas id="malePopChart"></canvas>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="totalPopChart"></canvas>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="zChromChart"></canvas>
+                    </div>
+                </div>
             </div>
         </main>
     </div>

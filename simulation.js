@@ -221,3 +221,28 @@ function runTimelineWithPop(seedPop, birthRateELD, viableY, maxPopulation, gener
     }
     return { success: false, pop: currentPop };
 }
+
+function runTimelineHistory(seedPop, birthRateELD, viableY, maxPopulation, generations, stats) {
+    let currentPop = [...seedPop]; // Copy to avoid mutating original immediately if that matters
+    const history = [];
+
+    // Push initial state (Gen 0)
+    history.push([...currentPop]);
+
+    for (let count = 1; count <= generations; count++) {
+        let result = nextGenClean(currentPop, birthRateELD, viableY, maxPopulation, stats);
+        currentPop = result.pop;
+        history.push([...currentPop]);
+
+        if (currentPop[0] === 0 && currentPop[1] === 0 && currentPop[2] === 0 && currentPop[3] === 0) {
+            return { success: false, history: history };
+        }
+        if (result.status === 1 || result.status === 2 || result.status === 3) {
+            return { success: false, history: history };
+        }
+        if (result.status === 4) {
+            return { success: true, history: history };
+        }
+    }
+    return { success: true, history: history };
+}

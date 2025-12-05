@@ -29,9 +29,31 @@ document.getElementById('simForm').addEventListener('submit', function (e) {
             const stats = new SimulationStats();
             let success = 0;
 
+
+            // Collect data for stats
+            const allHistories = [];
+            const maxTrackedTimelines = 1000; // Prevent memory issues with huge simulations
+
             for (let i = 0; i < timelines; i++) {
-                if (runTimeline(pop, birth, viableY, maxPop, generations, stats)) {
-                    success++;
+                // Determine if we should track history for this run
+                const trackHistory = i < maxTrackedTimelines;
+
+                // If we are tracking history, we MUST use runTimelineHistory
+                // If not, we can use the faster runTimeline (but we still need success/fail for summary)
+
+                // Actually, to answer the user's request for "representative of all timelines", 
+                // we probably need to sample if N is huge, or just track the first N.
+                // Let's settle on tracking the first `maxTrackedTimelines`.
+
+                if (trackHistory) {
+                    const result = runTimelineHistory(pop, birth, viableY, maxPop, generations, stats);
+                    if (result.success) success++;
+                    allHistories.push(result.history);
+                } else {
+                    // Fallback to faster, no-alloc runTimeline for remaining iterations if count is huge
+                    if (runTimeline(pop, birth, viableY, maxPop, generations, stats)) {
+                        success++;
+                    }
                 }
             }
 
@@ -58,31 +80,17 @@ document.getElementById('simForm').addEventListener('submit', function (e) {
                 summary += "They hit that population cap at or below " + stats.popCapGen + " generations.\n";
             }
 
-            // Run one last time with population details for the example
-            const exampleResult = runTimelineWithPop(pop, birth, viableY, maxPop, generations, stats);
+            // Run one last time with population details for the example *and history*
+            const exampleResult = runTimelineHistory(pop, birth, viableY, maxPop, generations, stats);
             const ZisThere = exampleResult.success;
-            const finalPop = exampleResult.pop;
-
-            const isMarker = finalPop[0] === 0 && finalPop[1] === 0 && finalPop[2] === 0 && finalPop[3] > 0; // Note: Go code logic for marker seems to be checking for specific failure states returned as [0,0,0,X]. 
-            // My runTimelineWithPop returns actual population.
-            // Wait, in Go `GenTryFailWithPop` returns `series` which holds the population OR the error code.
-            // In my JS `nextGenClean` returns `{status, pop}`. 
-            // `runTimelineWithPop` returns the final population.
-            // If it failed, the population might be [0,0,0,0] or similar.
-            // But the Go code uses "unnatural output" like [0,0,0,1] to signal failure type.
-            // My JS `runTimelineWithPop` just returns the population at the end.
-            // If I want to match the summary logic exactly, I need to know WHY it failed if it failed.
-
-            // Let's look at the Go summary logic again.
-            // `isMarker := finalPop[0] == 0 && finalPop[1] == 0 && finalPop[2] == 0 && finalPop[3] > 0`
-            // This checks if the returned "population" is actually an error code [0,0,0,1], [0,0,0,2], etc.
-            // My `runTimelineWithPop` returns the ACTUAL population.
-            // So I should check if the population is valid.
+            // The last element of history is the final population
+            const history = exampleResult.history;
+            const finalPop = history[history.length - 1];
 
             const total = finalPop[0] + finalPop[1] + finalPop[2] + finalPop[3];
 
             if (total > 0) {
-                summary += "\nExample timeline final population totals:\n";
+                summary += "\nExample timeline results:\n";
                 summary += "Adam: " + finalPop[0] + "\n";
                 summary += "Eve: " + finalPop[1] + "\n";
                 summary += "Lilith: " + finalPop[2] + "\n";
@@ -99,6 +107,11 @@ document.getElementById('simForm').addEventListener('submit', function (e) {
             if (ZisThere && total >= maxPop) {
                 summary += "\nExample timeline ended successfully by reaching the population cap.\n";
             }
+
+            // --- Chart Generation ---
+            // Calculate stats across all histories
+            const chartData = calculateStats(allHistories, generations);
+            renderCharts(chartData);
 
             const resultsContainer = document.getElementById('results');
             const resultText = document.getElementById('resultText');
@@ -118,3 +131,227 @@ document.getElementById('simForm').addEventListener('submit', function (e) {
         }
     }, 10);
 });
+
+// Chart instances
+let malePopChartInstance = null;
+let totalPopChartInstance = null;
+let zChromChartInstance = null;
+
+function calculateStats(histories, maxGen) {
+    const generations = [];
+    const maleStats = { median: [], p10: [], p90: [] };
+    const totalPopStats = { median: [], p10: [], p90: [] };
+    const zChromStats = { median: [], p10: [], p90: [] };
+
+    // Find actual max generations across histories (some might die out early)
+    // Actually, histories track up to failure or maxGen. If they fail, they return short arrays.
+    // We should normalize length or handle missing data.
+    // Let's iterate up to maxGen.
+
+    // Correction: `generations` input is an integer (count), not array. 
+    // And histories can be different lengths.
+    // If a timeline dies out at gen 5, what is its population at gen 10? 0.
+    // We must treat short histories as trailing zeros.
+
+    let actualMaxLen = 0;
+    histories.forEach(h => {
+        if (h.length > actualMaxLen) actualMaxLen = h.length;
+    });
+
+    for (let g = 0; g < actualMaxLen; g++) {
+        generations.push(g);
+
+        const genMale = [];
+        const genTotal = [];
+        const genZ = [];
+
+        histories.forEach(h => {
+            // If history is shorter than g, population is 0
+            let pop = [0, 0, 0, 0];
+            if (g < h.length) {
+                pop = h[g];
+            }
+
+            const adam = pop[0];
+            const eve = pop[1];
+            const lilith = pop[2];
+            const diana = pop[3];
+            const total = adam + eve + lilith + diana;
+
+            genTotal.push(total);
+
+            if (total > 0) {
+                genMale.push((adam / total) * 100);
+                const zCarriers = lilith + diana;
+                genZ.push((zCarriers / total) * 100);
+            } else {
+                genMale.push(0);
+                genZ.push(0);
+            }
+        });
+
+        // Helper for percentiles
+        const getPercentile = (arr, p) => {
+            if (arr.length === 0) return 0;
+            arr.sort((a, b) => a - b);
+            const index = (arr.length - 1) * p;
+            const lower = Math.floor(index);
+            const upper = Math.ceil(index);
+            const weight = index - lower;
+            if (upper >= arr.length) return arr[lower];
+            return arr[lower] * (1 - weight) + arr[upper] * weight;
+        };
+
+        maleStats.median.push(getPercentile(genMale, 0.5));
+        maleStats.p10.push(getPercentile(genMale, 0.1));
+        maleStats.p90.push(getPercentile(genMale, 0.9));
+
+        totalPopStats.median.push(getPercentile(genTotal, 0.5));
+        totalPopStats.p10.push(getPercentile(genTotal, 0.1));
+        totalPopStats.p90.push(getPercentile(genTotal, 0.9));
+
+        zChromStats.median.push(getPercentile(genZ, 0.5));
+        zChromStats.p10.push(getPercentile(genZ, 0.1));
+        zChromStats.p90.push(getPercentile(genZ, 0.9));
+    }
+
+    return { generations, maleStats, totalPopStats, zChromStats };
+}
+
+function renderCharts(data) {
+    const { generations, maleStats, totalPopStats, zChromStats } = data;
+
+    // Destroy existing charts
+    if (malePopChartInstance) malePopChartInstance.destroy();
+    if (totalPopChartInstance) totalPopChartInstance.destroy();
+    if (zChromChartInstance) zChromChartInstance.destroy();
+
+    const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { labels: { color: '#e0e0e0' } },
+            tooltip: { // Improved tooltip to show range
+                mode: 'index',
+                intersect: false
+            }
+        },
+        scales: {
+            x: { ticks: { color: '#a0a0a0' }, grid: { color: '#333' } },
+            y: { ticks: { color: '#a0a0a0' }, grid: { color: '#333' } }
+        },
+        interaction: {
+            mode: 'nearest',
+            axis: 'x',
+            intersect: false
+        }
+    };
+
+    const createDataset = (label, color, stats) => [
+        {
+            label: label + ' (Median)',
+            data: stats.median,
+            borderColor: color,
+            backgroundColor: color,
+            borderWidth: 2,
+            fill: false,
+            tension: 0.1,
+            zIndex: 10
+        },
+        {
+            label: '80% Range',
+            data: stats.p90,
+            borderColor: 'transparent',
+            backgroundColor: color.replace(')', ', 0.2)').replace('rgb', 'rgba'),
+            fill: '+1', // Fill to next dataset (which will be p10, added in reverse order effectively or we manage order)
+            // Wait, Chart.js filling usually works by filling to a specific dataset index relative to current.
+            // A common pattern for confidence intervals is:
+            // 1. Upper bound (transparent line)
+            // 2. Lower bound (transparent line, fill to Upper)
+            // But we want a labeled Median.
+            // Let's try: 
+            // 1. Median
+            // 2. P90 (hidden line)
+            // 3. P10 (fill to P90)
+            pointRadius: 0
+        },
+        {
+            label: 'Lower Bound', // Hide this label?
+            data: stats.p10,
+            borderColor: 'transparent',
+            backgroundColor: 'transparent',
+            fill: '-1', // Fill to previous dataset (P90)
+            pointRadius: 0
+        }
+    ];
+
+    // For chart.js 'fill: -1' means fill to previous dataset.
+    // So usually order is: Median, Upper(P90), Lower(P10).
+    // If P10 fills to '-1', it fills to P90.
+    // So the area between P10 and P90 is colored.
+
+    // Male Pop Chart
+    const ctxMale = document.getElementById('malePopChart').getContext('2d');
+    malePopChartInstance = new Chart(ctxMale, {
+        type: 'line',
+        data: {
+            labels: generations,
+            datasets: createDataset('Male %', 'rgb(187, 134, 252)', maleStats)
+        },
+        options: {
+            ...commonOptions,
+            scales: { ...commonOptions.scales, y: { ...commonOptions.scales.y, min: 0, max: 100 } },
+            plugins: {
+                ...commonOptions.plugins, legend: {
+                    labels: {
+                        color: '#e0e0e0',
+                        filter: item => item.text.includes('(Median)') // Only show Median in legend
+                    }
+                }
+            }
+        }
+    });
+
+    // Total Pop Chart
+    const ctxTotal = document.getElementById('totalPopChart').getContext('2d');
+    totalPopChartInstance = new Chart(ctxTotal, {
+        type: 'line',
+        data: {
+            labels: generations,
+            datasets: createDataset('Total Pop', 'rgb(3, 218, 198)', totalPopStats)
+        },
+        options: {
+            ...commonOptions,
+            plugins: {
+                ...commonOptions.plugins, legend: {
+                    labels: {
+                        color: '#e0e0e0',
+                        filter: item => item.text.includes('(Median)')
+                    }
+                }
+            }
+        }
+    });
+
+    // Z Chrom Chart
+    const ctxZ = document.getElementById('zChromChart').getContext('2d');
+    zChromChartInstance = new Chart(ctxZ, {
+        type: 'line',
+        data: {
+            labels: generations,
+            datasets: createDataset('Z Carriers %', 'rgb(207, 102, 121)', zChromStats)
+        },
+        options: {
+            ...commonOptions,
+            scales: { ...commonOptions.scales, y: { ...commonOptions.scales.y, min: 0, max: 100 } },
+            plugins: {
+                ...commonOptions.plugins, legend: {
+                    labels: {
+                        color: '#e0e0e0',
+                        filter: item => item.text.includes('(Median)')
+                    }
+                }
+            }
+        }
+    });
+}
